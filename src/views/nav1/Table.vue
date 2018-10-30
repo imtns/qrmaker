@@ -267,7 +267,10 @@ export default {
       const para = Object.assign({}, this.addForm);
       getBranches(para).then(res => {
         console.log(res);
-        this.branches = res.data;
+        var arr = res.data.filter(function(item, pos) {
+          return res.data.indexOf(item) == pos;
+        });
+        this.branches = arr;
         this.qrVisible = true;
       });
     },
@@ -296,7 +299,7 @@ export default {
             if (res.base64) {
               this.previewImage = res.base64;
             } else {
-              this.$message.error("生成二维码出现异常, 请稍后重试...");
+              this.$message.error(res.msg);
             }
             this.qrLoading = false;
           })
@@ -307,7 +310,7 @@ export default {
             this.qrLoading = false;
           });
       } catch (err) {
-        this.$message.error("出错了.." + err.messageg);
+        this.$message.error("出错了.." + err.message);
       }
     },
     //显示新增界面

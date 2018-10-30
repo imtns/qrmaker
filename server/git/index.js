@@ -1,5 +1,7 @@
 const childProcess = require('child_process');
-const { spawn } = childProcess;
+const {
+    spawn
+} = childProcess;
 const util = require('util');
 const Git = require('nodegit');
 const fs = require('fs');
@@ -36,23 +38,28 @@ module.exports = {
         try {
             ({
                 project_name: projectName,
+                git_url: gitURL,
             } = req.body);
             localPath = 'C:/tmp/';
             localPath = localPath + projectName + '/master';
+            if (!fs.existsSync(localPath)) {
+                await cloneToLocal('master');
+            }
             open(localPath).then(function (repo) {
                 return repo.getReferenceNames(Git.Reference.TYPE.LISTALL);
             }).then(function (arrayString) {
+                console.log(arrayString);
                 const arr = arrayString.map(item => {
                     item = item.substr(item.lastIndexOf('/') + 1, item.length - item.lastIndexOf('/'))
                     return item;
                 })
                 res.status(200).json({
-                    message: "OK",
+                    msg: "OK",
                     data: arr
                 });
             }).catch(function (err) {
                 res.status(500).json({
-                    message: err,
+                    msg: err,
                     data: []
                 });
             }).done(function () {
@@ -60,7 +67,7 @@ module.exports = {
             });
         } catch (err) {
             res.status(500).json({
-                message: err,
+                msg: err,
                 data: []
             });
         }
@@ -74,11 +81,11 @@ module.exports = {
             await cloneToLocal('master');
             res.status(200).json({
                 code: 200,
-                message: 'Done',
+                msg: 'Done',
             });
         } catch (err) {
             res.status(500).json({
-                message: err,
+                msg: err,
                 data: []
             });
         }
@@ -107,22 +114,34 @@ module.exports = {
             await cloneToLocal(branch);
             console.log('clone done!');
 
-            const qrPath = qrcodePath + projectName;
+            const qrPath = qrcodePath + "/" + projectName + "/" + branch;
             const qrFilePath = qrPath + "/qrcode.txt";
 
             //每次清空二维码，否则会存在过期的情况
+            if (!fs.existsSync(qrcodePath + "/" + projectName)) {
+                fs.mkdirSync(qrcodePath + "/" + projectName);
+            }
             if (!fs.existsSync(qrPath)) {
                 fs.mkdirSync(qrPath);
             }
             fs.writeFileSync(qrFilePath, "")
 
             await pull();
-
-            const needLogin = await makingQR();
-            if (needLogin) {
+            try {
+                await makingQR();
+            } catch (err) {
+                currentState = "";
+                let message = "";
+                if (err.indexOf('登录') > -1) {
+                    message = '请联系管理员重新登录开发者工具'
+                } else if (err.indexOf('存在') > -1) {
+                    message = '开发者工具已存在相同项目名称, 请修改名称后生成'
+                } else {
+                    message = err;
+                }
                 res.json({
                     code: 100,
-                    msg: '微信开发者工具需要登录，请联系管理员',
+                    msg: message,
                 });
                 return;
             }
@@ -169,7 +188,10 @@ async function cloneToLocal(b) {
  */
 async function exec(cmd) {
     console.log(cmd);
-    const { stdout, stderr } = await processExec(cmd);
+    const {
+        stdout,
+        stderr
+    } = await processExec(cmd);
 
     if (stderr) {
         throw new Error(stderr);
@@ -237,13 +259,13 @@ function startBuildProcess() {
             }, 3000);
             return;
         }
-    
+
         const configName = '/project.config.json';
         const configTargetPath = localPath + '/dist/' + configName;
         const configResoucePath = localPath + configName;
         //执行run build 生成dist目录
         currentState = 'Building...'
-    
+
         const buildProcess = spawn('bash');
         buildProcess.stdin.write(`cd ${localPath} \n`);
         buildProcess.stdin.write(`npm run gemini \n`);
@@ -351,18 +373,19 @@ async function replaceFileString(path) {
  * 文档地址：https://developers.weixin.qq.com/miniprogram/dev/devtools/cli.html
  * 注:执行命令需要开启微信web开发者工具
  */
-async function makingQR() {
-    console.log('making QRCode...');
-    // /*采用命令行方式运行接口 */
-    const dist = `${localPath}${isWepy?'/dist':`/${folder}`}`;
-    currentState = 'Making QR...'
-    const result = await exec(`cli -p ${dist} --preview-qr-output base64@${qrcodePath}${projectName}/qrcode.txt`)
-
-    // 如果微信开发者工具未登录，则第一次会生成登录二维码
-    if (result.indexOf('重新登录') > -1) {
-        console.log('需要登录')
-        return '需要登录编辑器,请联系管理员';
-    }
+function makingQR() {
+    return new Promise(async function (resolve, reject) {
+        console.log('making QRCode...');
+        // /*采用命令行方式运行接口 */
+        const dist = `${localPath}${isWepy?'/dist':`/${folder}`}`;
+        currentState = 'Making QR...'
+        try {
+            const result = await exec(`cli -p ${dist} --preview-qr-output base64@${qrcodePath}${projectName}/${branch}/qrcode.txt`)
+        } catch (e) {
+            reject(e.message);
+        }
+        resolve();
+    })
 }
 //读取文件
 async function readModuleFile(path) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-let base = '//10.9.130.43:9999';
-// let base = '//10.252.70.37:9999';
+// let base = '//10.9.130.43:9999';
+let base = '//10.252.70.37:9999';
 
 
 export const requestLogin = params => {
