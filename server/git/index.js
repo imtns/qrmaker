@@ -1,15 +1,15 @@
-const childProcess = require('child_process');
-const {
-    spawn
-} = childProcess;
+// const childProcess = require('child_process');
+// const {
+//     spawn
+// } = childProcess;
 const util = require('util');
 const Git = require('nodegit');
 const fs = require('fs');
 const config = require('./config');
-const processMap = {};
+// const processMap = {};
 
 const processExec = util.promisify(require('child_process').exec);
-const qrcodePath = "C:/tmp/qrcode/";
+const qrcodePath = "D:/tmp/qrcode/";
 const open = Git.Repository.open;
 let localPath = "";
 let projectName, gitURL, branch = 'master',
@@ -40,7 +40,7 @@ module.exports = {
                 project_name: projectName,
                 git_url: gitURL,
             } = req.body);
-            localPath = 'C:/tmp/';
+            localPath = 'D:/tmp/';
             localPath = localPath + projectName + '/master';
             if (!fs.existsSync(localPath)) {
                 await cloneToLocal('master');
@@ -172,7 +172,7 @@ module.exports = {
  * @param b 分支名
  */
 async function cloneToLocal(b) {
-    localPath = 'C:/tmp/';
+    localPath = 'D:/tmp/';
     //如果目标目录存在直接拉取最新,否则拷贝目标目录到本地
     localPath = localPath + projectName + '/' + b;
     if (!fs.existsSync(localPath)) {
@@ -187,17 +187,19 @@ async function cloneToLocal(b) {
  * @param {控制台命令} cmd 
  */
 async function exec(cmd) {
-    console.log(cmd);
-    const {
-        stdout,
-        stderr
-    } = await processExec(cmd);
+    return new Promise(async (resolve, reject) => {
+        console.log(cmd);
+        const {
+            stdout,
+            stderr
+        } = await processExec(cmd);
 
-    if (stderr) {
-        throw new Error(stderr);
-    }
+        if (stderr) {
+            reject(stderr);
+        }
 
-    return stdout;
+        resolve(stdout);
+    })
 }
 /**
  * 如果本地文件没有此项目，将从git上clone下来
@@ -217,8 +219,8 @@ async function clone() {
             }).done(async () => {
                 //拷贝完项目并且切换完分支后  开始install 
                 if (isWepy) {
-                    await exec(`cd ${localPath} && npm install`);
                     currentState = 'Installing...'
+                    await exec(`cd ${localPath} && npm install`);
                 }
                 console.log('npm install');
                 resolve();
@@ -253,55 +255,54 @@ async function checkoutBranch(repo) {
 
 function startBuildProcess() {
     return new Promise(async (resolve, reject) => {
-        if (processMap[localPath]) {
-            setTimeout(() => {
-                resolve();
-            }, 3000);
-            return;
-        }
+        // if (processMap[localPath]) {
+        //     setTimeout(() => {
+        //         resolve();
+        //     }, 3000);
+        //     return;
+        // }
 
-        const configName = '/project.config.json';
-        const configTargetPath = localPath + '/dist/' + configName;
-        const configResoucePath = localPath + configName;
+
         //执行run build 生成dist目录
         currentState = 'Building...'
 
-        const buildProcess = spawn('bash');
-        buildProcess.stdin.write(`cd ${localPath} \n`);
-        buildProcess.stdin.write(`npm run gemini \n`);
-        buildProcess.stdin.end();
-
-        let timer = null;
-        let useTimer = false;
-        buildProcess.stdout.on('data', data => {
-            const output = data.toString();
-            console.log('stdout:', output);
-            // 准备好监听了
-            if (~output.indexOf('监听')) {
-                useTimer = true;
-                return resolve();
-            }
-        });
-        buildProcess.stderr.on('data', data => {
-            console.log('stderr:', data.toString());
-        });
-        buildProcess.on('error', err => {
-            console.log(`PROCESS ERROR: ${err.toString()}`);
+        // const buildProcess = spawn('bash');
+        try {
+            await exec(`cd ${localPath} && npm run build \n`)
+            // buildProcess.stdin.write(`cd ${localPath} \n`);
+            // buildProcess.stdin.write(`npm run gemini \n`);
+            // buildProcess.stdin.end();
+            // useTimer = true;
+            // return resolve();
+        } catch (err) {
             reject(`PROCESS ERROR: ${err.toString()}`)
-        });
-        buildProcess.on('close', code => {
-            console.log('进程关闭，code:', code);
-            resolve(code);
-        });
-
-        processMap[localPath] = buildProcess;
-
-        if (!fs.existsSync(configTargetPath)) {
-            //将project.config.json拷贝到dist目录下，生成二维码需要此文件
-            await copyFile(configResoucePath, configTargetPath);
-            //将拷贝到dist目录的project.config.json文件替换字符串。因为是从上一级目录拷贝过来的，所以里面的路径需要修改
-            await replaceFileString(configTargetPath);
         }
+        // let timer = null;
+        // let useTimer = false;
+        // buildProcess.stdout.on('data', data => {
+        //     const output = data.toString();
+        //     console.log('stdout:', output);
+        //     // 准备好监听了
+        //     if (~output.indexOf('监听')) {
+        //         useTimer = true;
+        //         return resolve();
+        //     }
+        // });
+        // buildProcess.stderr.on('data', data => {
+        //     console.log('stderr:', data.toString());
+        // });
+        // buildProcess.on('error', err => {
+        //     console.log(`PROCESS ERROR: ${err.toString()}`);
+        //     reject(`PROCESS ERROR: ${err.toString()}`)
+        // });
+        // buildProcess.on('close', code => {
+        //     console.log('进程关闭，code:', code);
+        //     resolve(code);
+        // });
+
+        // processMap[localPath] = buildProcess;
+
+        resolve();
     })
 }
 
@@ -321,10 +322,19 @@ function pull() {
         .then(() => {
             //获取分支
             return checkoutBranch(repository);
-        }).then(() => {
+        }).then(async () => {
             console.log('pull done!');
             if (isWepy) {
-                return startBuildProcess();
+                await startBuildProcess();
+                const configName = '/project.config.json';
+                const configTargetPath = localPath + '/dist/' + configName;
+                const configResoucePath = localPath + configName;
+                if (!fs.existsSync(configTargetPath)) {
+                    //将project.config.json拷贝到dist目录下，生成二维码需要此文件
+                    await copyFile(configResoucePath, configTargetPath);
+                    //将拷贝到dist目录的project.config.json文件替换字符串。因为是从上一级目录拷贝过来的，所以里面的路径需要修改
+                    await replaceFileString(configTargetPath);
+                }
             }
         }).then(() => {
             //生成dist目录
@@ -381,6 +391,7 @@ function makingQR() {
         currentState = 'Making QR...'
         try {
             const result = await exec(`cli -p ${dist} --preview-qr-output base64@${qrcodePath}${projectName}/${branch}/qrcode.txt`)
+            console.log(result);
         } catch (e) {
             reject(e.message);
         }
