@@ -122,6 +122,7 @@
                         <el-dropdown-item :command="branch" v-for="branch in branches">{{branch}}</el-dropdown-item>
                     </el-dropdown-menu>
                 </el-dropdown>
+                <el-checkbox v-if="!qrLoading && isWepy" v-model="moduleChecked" class="moduleCheck">使用npm模块</el-checkbox>
                 <div class="state">{{state}}</div>
                 <img class="previewImage" :src="'data:image/jpeg;base64,'+previewImage" />
                 <el-button type="primary" @click.native="goMaking" style="position:absolute;left:50%;bottom:20px;margin-left:-30px;" :loading="addLoading">提交</el-button>
@@ -151,6 +152,7 @@ export default {
       filters: {
         id: ""
       },
+      moduleChecked: false,
       defalutBlank:
         "iVBORw0KGgoAAAANSUhEUgAAACkAAAAlCAYAAADfosCNAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA+SURBVFhH7c5BDQAwEASh+je9NcHnkkEBbweUVEoqJZWSSkmlpFJSKamUVEoqJZWSSkmlpFJSKamUVEoa2we/6J2mM5bfCgAAAABJRU5ErkJggg==",
       previewImage: this.defalutBlank,
@@ -164,6 +166,7 @@ export default {
       editLoading: false,
       //编辑界面数据
       qrLoading: false,
+      isWepy: false,
       qrVisible: false,
       folderOptionVisible: false,
       addFormVisible: false, //新增界面是否显示
@@ -265,6 +268,7 @@ export default {
       this.addForm = Object.assign({}, row);
       this.previewImage = this.defalutBlank;
       const para = Object.assign({}, this.addForm);
+      this.isWepy = para.isWepy == "是" ? true : false;
       getBranches(para).then(res => {
         console.log(res);
         var arr = res.data.filter(function(item, pos) {
@@ -288,6 +292,7 @@ export default {
       this.qrLoading = true;
       let para = Object.assign({}, this.addForm);
       para.branch = this.dropdownText;
+      para.needModules = this.moduleChecked;
       try {
         this.FetchState();
         const t = setInterval(this.FetchState, 2000);
@@ -424,6 +429,12 @@ export default {
 </script>
 
 <style scoped>
+.moduleCheck {
+  position: absolute;
+  top: 30px;
+  right: 170px;
+  width: 200px;
+}
 .qrWrapper {
   width: 300px;
   height: 400px;
@@ -449,7 +460,9 @@ export default {
   color: rgb(48, 157, 247);
   font-size: 20px;
   position: absolute;
+  width: 300px;
   left: 50%;
+  text-align: center;
   top: 34%;
   transform: translate3d(-50%, -50%, 0);
   z-index: 99999;
