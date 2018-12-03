@@ -108,11 +108,6 @@ async function clone() {
                 return checkoutBranch(repo)
             }).done(async () => {
                 //拷贝完项目并且切换完分支后  开始install 
-                // if (isWepy) {
-                //     o.currentState = 'Installing...'
-                //     await exec(`cd ${o.localPath} && npm install`);
-                // }
-                // console.log('npm install');
                 resolve();
             })
         } catch (err) {

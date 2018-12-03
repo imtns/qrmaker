@@ -42,6 +42,20 @@ module.exports = {
         })
     },
     async startBuildProcess() {
+        // const configName = '/project.config.json';
+        // const configTargetPath = o.localPath + '/dist' + configName;
+        // const configResoucePath = o.localPath + configName;
+        // await configEdit(configResoucePath);
+        // //将project.config.json拷贝到dist目录下，生成二维码需要此文件
+        // try {
+        //     await copyFile(configResoucePath, configTargetPath);
+        //     resolve();
+        // } catch (err) {
+        //     console.log(err);
+        //     reject(err);
+        //     return;
+        // }
+        // return;
         return new Promise(async (resolve, reject) => {
             try {
                 if (processMap[o.localPath]) {
@@ -96,20 +110,28 @@ module.exports = {
  * @param {目标文件} target 
  */
 async function copyFile(source, target) {
-    var rd = fs.createReadStream(source);
-    var wr = fs.createWriteStream(target);
-    try {
-        return await new Promise(function (resolve, reject) {
-            rd.on('error', reject);
-            wr.on('error', reject);
-            wr.on('finish', resolve);
-            rd.pipe(wr);
-        });
-    } catch (error) {
-        rd.destroy();
-        wr.end();
-        throw error;
-    }
+    return await new Promise(function (resolve, reject) {
+        try {
+            fs.copyFileSync(source, target);
+            resolve();
+        } catch (err) {
+            reject(err)
+        }
+    })
+    // var rd = fs.createReadStream(source);
+    // var wr = fs.createWriteStream(target);
+    // try {
+    //     return await new Promise(function (resolve, reject) {
+    //         rd.on('error', reject);
+    //         wr.on('error', reject);
+    //         wr.on('finish', resolve);
+    //         rd.pipe(wr);
+    //     });
+    // } catch (error) {
+    //     rd.destroy();
+    //     wr.end();
+    //     throw error;
+    // }
 }
 
 async function cmdRun(cmd) {
@@ -175,8 +197,12 @@ async function configEdit(configResoucePath) {
             var json = JSON.parse(data)
             json.setting['nodeModules'] = !!o.needModules;
             json.miniprogramRoot = './';
-            fs.writeFile(configResoucePath, JSON.stringify(json, null, 2));
-            resolve();
+            fs.writeFile(configResoucePath, JSON.stringify(json, null, 2), (error) => {
+                if (error)
+                    reject(error);
+                resolve();
+            });
+
         })
     })
 }
