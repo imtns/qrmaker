@@ -1,7 +1,5 @@
 
-# To start
-
-This is a project template for [vue-cli](https://github.com/vuejs/vue-cli)
+小程序二维码生成工具
 
 ``` bash
 # install dependencies
