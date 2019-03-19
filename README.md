@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 小程序二维码生成工具
 
@@ -36,3 +37,6 @@ run node app so you can use server side function
     * routes.js
 * static - static assets
 
+=======
+qr
+>>>>>>> 912b7f9bb5c9aa929993e7342bce81f4cee7c47b
